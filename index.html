@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Verificador de senhas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(255,255,255,0.15);
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --accent: #00e5a0;
+    --accent-dim: rgba(0,229,160,0.1);
+    --accent-glow: rgba(0,229,160,0.25);
+    --danger: #ff4d6d;
+    --danger-dim: rgba(255,77,109,0.1);
+    --warning: #ffb830;
+    --mono: 'DM Mono', monospace;
+    --display: 'Syne', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3rem 1rem 4rem;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 620px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    margin-bottom: 3rem;
+    text-align: center;
+  }
+
+  .logo-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 0.5rem;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    border: 1.5px solid var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 1rem;
+    transition: border-color 0.2s;
+  }
+
+  .card:hover { border-color: var(--border-hover); }
+
+  .card-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1.25rem;
+  }
+
+  /* Password display */
+  .password-display {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1.25rem;
+    min-height: 58px;
+    transition: border-color 0.2s;
+  }
+
+  .password-display:focus-within { border-color: var(--accent); }
+
+  #password-output {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  .copy-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+  }
+
+  .copy-btn:hover { color: var(--accent); background: var(--accent-dim); }
+  .copy-btn.copied { color: var(--accent); }
+
+  /* Sliders */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+  }
+
+  .slider-row label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    min-width: 90px;
+  }
+
+  input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+    cursor: pointer;
+  }
+
+  .slider-val {
+    font-size: 0.8rem;
+    color: var(--accent);
+    min-width: 28px;
+    text-align: right;
+  }
+
+  /* Toggles */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .toggle {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .toggle input { display: none; }
+
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 10px;
+    border: 1px solid var(--border-hover);
+    transition: background 0.2s;
+    cursor: pointer;
+  }
+
+  .toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    pointer-events: none;
+  }
+
+  .toggle input:checked ~ .toggle-thumb { transform: translateX(16px); }
+
+  /* Generate button */
+  .btn-generate {
+    width: 100%;
+    padding: 0.85rem;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--display);
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    margin-top: 0.5rem;
+  }
+
+  .btn-generate:hover { opacity: 0.9; }
+  .btn-generate:active { transform: scale(0.98); }
+
+  /* Entropy bar */
+  .entropy-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 1rem;
+  }
+
+  .entropy-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .entropy-track {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .entropy-fill {
+    height: 100%;
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.5s ease, background 0.5s;
+  }
+
+  .entropy-val {
+    font-size: 0.72rem;
+    color: var(--muted);
+    min-width: 52px;
+    text-align: right;
+  }
+
+  /* Checker section */
+  .check-input-wrap {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 1rem;
+    margin-bottom: 1rem;
+    transition: border-color 0.2s;
+  }
+
+  .check-input-wrap:focus-within { border-color: var(--accent-glow); }
+
+  #check-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    color: var(--text);
+    padding: 1rem 0;
+    letter-spacing: 0.04em;
+  }
+
+  #check-input::placeholder { color: var(--muted); }
+
+  .eye-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    transition: color 0.15s;
+  }
+
+  .eye-btn:hover { color: var(--text); }
+
+  .btn-check {
+    width: 100%;
+    padding: 0.85rem;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    font-family: var(--display);
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+
+  .btn-check:hover { background: var(--accent-dim); }
+  .btn-check:active { transform: scale(0.98); }
+  .btn-check:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Result */
+  .result-box {
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-top: 1rem;
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .result-box.safe {
+    background: var(--accent-dim);
+    border: 1px solid rgba(0,229,160,0.2);
+    display: block;
+  }
+
+  .result-box.pwned {
+    background: var(--danger-dim);
+    border: 1px solid rgba(255,77,109,0.2);
+    display: block;
+  }
+
+  .result-title {
+    font-family: var(--display);
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+  }
+
+  .result-box.safe .result-title { color: var(--accent); }
+  .result-box.pwned .result-title { color: var(--danger); }
+
+  .result-desc {
+    font-size: 0.75rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* Privacy note */
+  .privacy-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-top: 1rem;
+    font-size: 0.7rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .privacy-note svg { flex-shrink: 0; margin-top: 1px; }
+
+  .loading-dots span {
+    animation: blink 1.2s infinite;
+    opacity: 0;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes blink {
+    0%, 80%, 100% { opacity: 0; }
+    40% { opacity: 1; }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 2.5rem;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-align: center;
+    line-height: 1.8;
+  }
+
+  footer a { color: var(--accent); text-decoration: none; }
+
+  /* Copied toast */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--accent);
+    color: #000;
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    padding: 0.5rem 1.25rem;
+    border-radius: 100px;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    z-index: 100;
+    font-weight: 500;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <div class="logo-line">
+      <div class="logo-icon">🔐</div>
+      <h1>Pass<span>Guard</span></h1>
+    </div>
+    <p class="subtitle">verificador de senhas</p>
+  </header>
+
+  <!-- GERADOR -->
+  <div class="card">
+    <div class="card-label"> gerador</div>
+
+    <div class="password-display">
+      <input type="text" id="password-output" readonly value="clique em gerar →" onclick="this.select()"/>
+      <button class="copy-btn" onclick="copyPassword()" title="Copiar">
+        <svg id="copy-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <rect x="9" y="9" width="13" height="13" rx="2" stroke-linecap="round"/>
+          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="slider-row">
+      <label>comprimento</label>
+      <input type="range" id="length-slider" min="8" max="64" value="16" oninput="updateLength(this.value)"/>
+      <span class="slider-val" id="length-val">16</span>
+    </div>
+
+    <label class="toggle-row">
+      <span class="toggle">
+        <input type="checkbox" id="toggle-symbols" checked/>
+        <span class="toggle-track"></span>
+        <span class="toggle-thumb"></span>
+      </span>
+      símbolos (!@#$%&*)
+    </label>
+
+    <label class="toggle-row">
+      <span class="toggle">
+        <input type="checkbox" id="toggle-upper" checked/>
+        <span class="toggle-track"></span>
+        <span class="toggle-thumb"></span>
+      </span>
+      maiúsculas (A–Z)
+    </label>
+
+    <label class="toggle-row">
+      <span class="toggle">
+        <input type="checkbox" id="toggle-numbers" checked/>
+        <span class="toggle-track"></span>
+        <span class="toggle-thumb"></span>
+      </span>
+      números (0–9)
+    </label>
+
+    <button class="btn-generate" onclick="generatePassword()">GERAR SENHA</button>
+
+    <div class="entropy-row">
+      <span class="entropy-label">entropia</span>
+      <div class="entropy-track">
+        <div class="entropy-fill" id="entropy-fill"></div>
+      </div>
+      <span class="entropy-val" id="entropy-val">— bits</span>
+    </div>
+  </div>
+
+  <!-- VERIFICADOR -->
+  <div class="card">
+    <div class="card-label">// verificar vazamento</div>
+
+    <div class="check-input-wrap">
+      <input type="password" id="check-input" placeholder="cole ou digite uma senha..."
+             oninput="onCheckInput()" onkeydown="if(event.key==='Enter') checkPassword()"/>
+      <button class="eye-btn" onclick="toggleVisibility()" title="Mostrar/ocultar">
+        <svg id="eye-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke-linecap="round"/>
+          <circle cx="12" cy="12" r="3" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <button class="btn-check" id="check-btn" onclick="checkPassword()" disabled>
+      VERIFICAR NA HIBP
+    </button>
+
+    <div class="result-box" id="result-box">
+      <div class="result-title" id="result-title"></div>
+      <div class="result-desc" id="result-desc"></div>
+    </div>
+
+    <div class="privacy-note">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>
+        <strong style="color:var(--text)">k-anonymity:</strong> apenas os 5 primeiros caracteres do hash SHA-1
+        são enviados à API.
+      </span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">copiado!</div>
+
+<footer>
+  PassGuard · usa a API <a href="https://haveibeenpwned.com/API/v3" target="_blank">Have I Been Pwned</a><br/>
+  projeto de portfólio 
+</footer>
+
+<script>
+// ─── Gerador (roda no browser, sem precisar do Flask) ─────────────────────
+
+function generatePassword() {
+  const length = parseInt(document.getElementById('length-slider').value);
+  const useSymbols = document.getElementById('toggle-symbols').checked;
+  const useUpper   = document.getElementById('toggle-upper').checked;
+  const useNumbers = document.getElementById('toggle-numbers').checked;
+
+  let chars = 'abcdefghijklmnopqrstuvwxyz';
+  if (useUpper)   chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  if (useNumbers) chars += '0123456789';
+  if (useSymbols) chars += '!@#$%&*';
+
+  if (chars.length === 0) {
+    showToast('ative pelo menos uma opção!');
+    return;
+  }
+
+  // Usa crypto.getRandomValues — equivalente ao secrets do Python
+  const array = new Uint32Array(length);
+  crypto.getRandomValues(array);
+  const password = Array.from(array, n => chars[n % chars.length]).join('');
+
+  document.getElementById('password-output').value = password;
+  updateEntropy(password);
+
+  // Limpa resultado de verificação se estava mostrando
+  document.getElementById('result-box').className = 'result-box';
+}
+
+function updateLength(val) {
+  document.getElementById('length-val').textContent = val;
+}
+
+function updateEntropy(password) {
+  let charset = 26; 
+  if (document.getElementById('toggle-upper').checked)   charset += 26;
+  if (document.getElementById('toggle-numbers').checked) charset += 10;
+  if (document.getElementById('toggle-symbols').checked) charset += 7;
+
+  const bits = password.length * Math.log2(charset);
+  const fill = document.getElementById('entropy-fill');
+  const pct = Math.min((bits / 128) * 100, 100);
+
+  fill.style.width = pct + '%';
+  fill.style.background = bits < 40 ? '#ff4d6d'
+                        : bits < 60 ? '#ffb830'
+                        : '#00e5a0';
+  document.getElementById('entropy-val').textContent = Math.round(bits) + ' bits';
+}
+
+function copyPassword() {
+  const val = document.getElementById('password-output').value;
+  if (!val || val === 'clique em gerar →') return;
+  navigator.clipboard.writeText(val).then(() => showToast('copiado!'));
+}
+
+// ─── Verificador 
+
+function onCheckInput() {
+  const val = document.getElementById('check-input').value;
+  document.getElementById('check-btn').disabled = val.length === 0;
+  document.getElementById('result-box').className = 'result-box';
+}
+
+function toggleVisibility() {
+  const inp = document.getElementById('check-input');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function sha1(str) {
+  const buf = new TextEncoder().encode(str);
+  const hash = await crypto.subtle.digest('SHA-1', buf);
+  return Array.from(new Uint8Array(hash))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('').toUpperCase();
+}
+
+async function checkPassword() {
+  const password = document.getElementById('check-input').value;
+  if (!password) return;
+
+  const btn = document.getElementById('check-btn');
+  btn.disabled = true;
+  btn.innerHTML = 'VERIFICANDO<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>';
+
+  const result = document.getElementById('result-box');
+  result.className = 'result-box';
+
+  try {
+    const hash   = await sha1(password);
+    const prefix = hash.slice(0, 5);
+    const suffix = hash.slice(5);
+
+    // Chama diretamente a HIBP
+    const resp = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+      headers: { 'Add-Padding': 'true' }
+    });
+
+    if (!resp.ok) throw new Error('Erro na API');
+
+    const text = await resp.text();
+    let count = 0;
+
+    for (const line of text.split('\n')) {
+      const [h, c] = line.trim().split(':');
+      if (h === suffix) { count = parseInt(c); break; }
+    }
+
+    const title = document.getElementById('result-title');
+    const desc  = document.getElementById('result-desc');
+
+    if (count > 0) {
+      result.className = 'result-box pwned';
+      title.textContent = '⚠ senha comprometida';
+      desc.textContent  = `Esta senha apareceu ${count.toLocaleString('pt-BR')} vezes em vazamentos de dados conhecidos. Troque-a imediatamente.`;
+    } else {
+      result.className = 'result-box safe';
+      title.textContent = '✓ não encontrada';
+      desc.textContent  = 'Esta senha não aparece em nenhum vazamento conhecido. Lembre-se: use uma senha diferente em cada serviço.';
+    }
+
+  } catch (err) {
+    result.className = 'result-box pwned';
+    document.getElementById('result-title').textContent = 'erro de conexão';
+    document.getElementById('result-desc').textContent  = err.message;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'VERIFICAR NA HIBP';
+}
+
+// ─── Toast 
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// Gera uma senha logo ao abrir
+generatePassword();
+</script>
+</body>
+</html>
